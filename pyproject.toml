@@ -1,0 +1,27 @@
+[project]
+name = "optout"
+version = "0.1.0"
+description = "Track and work through every do-not-call / do-not-mail / data-broker opt-out for your phones, emails and addresses. No AI, no cloud: a plain local CLI."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "pyyaml>=6.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+browser = ["playwright>=1.45"]
+
+[project.scripts]
+optout = "optout.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/optout"]
+
+[dependency-groups]
+dev = ["pytest>=8"]

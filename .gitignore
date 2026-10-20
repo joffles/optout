@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+dist/
+*.egg-info/
+# never commit personal data
+identity.yaml
+state.json
+letters/

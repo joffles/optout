@@ -1,0 +1,480 @@
+# Opt-out registry catalog. Edit freely; `optout list` reads this file.
+#
+# Fields
+#   id            stable slug used on the command line
+#   name          display name
+#   category      phone | mail | email | credit-offers | data-broker
+#   method        web | email | phone | mail
+#   url           page to open (web) or info page
+#   phone         number to call (phone method, or alternative)
+#   email_to      address to write to (email method)
+#   mail_address  postal address (mail method)
+#   per           what one submission covers: person | phone | email | address
+#   max_per_submission  how many units one form submission accepts (phones)
+#   fields        identity fields the form asks for (for autofill + copy block)
+#   renew_days    re-run/re-check interval; null = permanent
+#   cost          free text
+#   states        restrict to residents of these states (null = everyone)
+#   verify_url    where to confirm registration later
+#   automation    assisted  = tool opens + autofills, you review & submit
+#                 prohibited = site terms forbid bots; tool opens page only
+#   notes         gotchas, shown by `optout show <id>`
+
+- id: national-dnc
+  name: National Do Not Call Registry (FTC)
+  category: phone
+  method: web
+  url: https://www.donotcall.gov/register.html
+  phone: "1-888-382-1222"
+  per: phone
+  max_per_submission: 3
+  fields: [phones, email]
+  renew_days: null
+  cost: Free
+  verify_url: https://www.donotcall.gov/verify.html
+  automation: assisted
+  notes: |
+    Up to 3 numbers per submission. You must click the confirmation link
+    emailed to you within 72 hours or the registration is dropped.
+    Alternative: call 1-888-382-1222 FROM the phone you want registered.
+    Registration never expires. It only stops legitimate telemarketers;
+    scammers ignore it, so pair it with carrier call blocking.
+
+- id: tx-no-call
+  name: Texas No Call List
+  category: phone
+  method: web
+  url: https://www.texasnocall.com/
+  phone: "1-866-896-6225"
+  per: phone
+  fields: [phones, address]
+  renew_days: 1095
+  cost: Small fee (check site)
+  states: [TX]
+  automation: assisted
+  notes: |
+    Texas residents only. Registration lasts 3 years. Verify the URL and
+    fee on the site; state sites change hosting periodically.
+
+- id: pa-do-not-call
+  name: Pennsylvania Do Not Call List
+  category: phone
+  method: web
+  url: https://www.attorneygeneral.gov/protect-yourself/do-not-call-list/
+  phone: "1-888-777-3406"
+  per: phone
+  fields: [phones, address]
+  renew_days: null
+  cost: Free
+  states: [PA]
+  automation: assisted
+  notes: Pennsylvania residents only. Registrations are permanent since Act 73 of 2019.
+
+- id: in-do-not-call
+  name: Indiana Do Not Call List
+  category: phone
+  method: web
+  url: https://www.indonotcall.org/
+  phone: "1-888-834-9969"
+  per: phone
+  fields: [phones, address]
+  renew_days: null
+  cost: Free
+  states: [IN]
+  automation: assisted
+  notes: Indiana residents only. Covers mobile numbers too.
+
+- id: co-no-call
+  name: Colorado No-Call List
+  category: phone
+  method: web
+  url: https://www.coloradonocall.com/
+  phone: "1-800-309-7041"
+  per: phone
+  fields: [phones, address]
+  renew_days: null
+  cost: Free
+  states: [CO]
+  automation: assisted
+  notes: Colorado residents only.
+
+- id: mo-no-call
+  name: Missouri No Call List
+  category: phone
+  method: web
+  url: https://ago.mo.gov/get-help/no-call-list/
+  phone: "1-866-662-2722"
+  per: phone
+  fields: [phones, address]
+  renew_days: null
+  cost: Free
+  states: [MO]
+  automation: assisted
+  notes: Missouri residents only. Also accepts text-message complaints.
+
+- id: la-do-not-call
+  name: Louisiana Do Not Call Program
+  category: phone
+  method: web
+  url: https://www.lpsc.louisiana.gov/donotcall
+  phone: "1-877-676-0773"
+  per: phone
+  fields: [phones, address]
+  renew_days: null
+  cost: Free
+  states: [LA]
+  automation: assisted
+  notes: Louisiana residents only. Verify the URL; the PSC reorganises its site often.
+
+# ---------------------------------------------------------------- mail
+
+- id: dmachoice
+  name: DMAchoice (ANA mail preference service)
+  category: mail
+  method: web
+  url: https://www.dmachoice.org/
+  mail_address: |
+    DMAchoice Consumer Preferences
+    P.O. Box 900
+    Cos Cob, CT 06807
+  per: address
+  fields: [name, address, email]
+  renew_days: 3650
+  cost: "$8 online / $9 by mail (10 years)"
+  automation: assisted
+  notes: |
+    Stops prospecting mail from ANA member companies for 10 years. Does not
+    stop mail from companies you already do business with, or Every Door
+    Direct Mail (zip-code saturation). Register each person at each address.
+    Allow 90 days to take effect. Mail-in: check or money order payable to ANA.
+
+- id: dmachoice-emps
+  name: DMAchoice Email Preference Service (eMPS)
+  category: email
+  method: web
+  url: https://www.dmachoice.org/
+  per: email
+  fields: [email]
+  renew_days: 2190
+  cost: Free
+  automation: assisted
+  notes: |
+    Separate from the mail registration. Suppresses prospecting email from
+    ANA members for 6 years. One submission per email address.
+
+- id: optoutprescreen
+  name: OptOutPrescreen (credit bureau pre-approved offers)
+  category: credit-offers
+  method: web
+  url: https://www.optoutprescreen.com/
+  phone: "1-888-567-8688"
+  mail_address: |
+    Opt-Out Department
+    P.O. Box 530200
+    Atlanta, GA 30353
+  per: person
+  fields: [name, address, date_of_birth]
+  renew_days: 1825
+  cost: Free
+  automation: assisted
+  notes: |
+    Joint Equifax/Experian/TransUnion/Innovis site. Online = 5 years;
+    the printed, signed form mailed in = permanent. SSN is optional on the
+    form; this tool never stores or types your SSN. Phone: 1-888-5-OPT-OUT.
+    Do this for every adult in the household; it is per person.
+
+- id: catalogchoice
+  name: Catalog Choice
+  category: mail
+  method: web
+  url: https://www.catalogchoice.org/
+  per: address
+  fields: [name, address, email]
+  renew_days: 180
+  cost: Free
+  automation: assisted
+  notes: |
+    Free account; opt out of individual catalogs by name, using the customer
+    number printed on the catalog's back cover when you have it. Re-check
+    every few months as new catalogs arrive.
+
+- id: valpak
+  name: Valpak blue envelope
+  category: mail
+  method: web
+  url: https://www.valpak.com/coupons/show/mailinglistsuppression
+  per: address
+  fields: [name, address]
+  renew_days: null
+  cost: Free
+  automation: assisted
+  notes: Address suppression form; allow 6-8 weeks.
+
+- id: save-vericast
+  name: Save / Vericast (RedPlum, RetailMeNot Everyday)
+  category: mail
+  method: web
+  url: https://www.save.com/mailing/delivery-options
+  per: address
+  fields: [address]
+  renew_days: null
+  cost: Free
+  automation: assisted
+  notes: |
+    Weekly coupon bundle. Validate the address, then choose "Remove this
+    Address". Allow about 6 weeks. Older redplum.com links redirect here.
+
+- id: yellowpages-optout
+  name: Yellow Pages / phone book delivery opt-out
+  category: mail
+  method: web
+  url: https://www.yellowpagesoptout.com/
+  per: address
+  fields: [name, address, email]
+  renew_days: null
+  cost: Free
+  automation: assisted
+  notes: Covers the major directory publishers for your zip.
+
+# ---------------------------------------------------------- data brokers
+
+- id: ca-drop
+  name: California DROP (Delete Request and Opt-out Platform)
+  category: data-broker
+  method: web
+  url: https://privacy.ca.gov/drop/
+  per: person
+  fields: [name, address, email, phones, date_of_birth]
+  renew_days: 365
+  cost: Free
+  states: [CA]
+  verify_url: https://privacy.ca.gov/drop/
+  automation: prohibited
+  notes: |
+    California residents only. One request goes to every data broker
+    registered with the state (500+). Identity is verified through the
+    California Identity Gateway or Login.gov, so the tool only opens the
+    page; do the verification yourself. Brokers must process requests
+    every 45 days from Aug 2026. Re-submit yearly to catch new brokers.
+
+- id: acxiom
+  name: Acxiom marketing opt-out
+  category: data-broker
+  method: web
+  url: https://isapps.acxiom.com/optout/optout.aspx
+  per: person
+  fields: [name, address, email, phones]
+  renew_days: null
+  cost: Free
+  automation: assisted
+  notes: |
+    Pick the consumer opt-out, choose "Me", submit, then click the link in
+    the "Consumer Opt-Out Verification" email and complete the second
+    CAPTCHA. Takes about two weeks. Separate deletion request is available
+    through Acxiom's privacy portal if you want data purged, not just
+    suppressed.
+
+- id: epsilon
+  name: Epsilon marketing opt-out
+  category: data-broker
+  method: email
+  email_to: privacy@epsilon.com
+  phone: "1-866-267-3861"
+  url: https://www.epsilon.com/us/consumer-information
+  per: person
+  fields: [name, address, email, phones]
+  renew_days: null
+  cost: Free
+  automation: assisted
+  notes: Email or call. Include every address variant you have lived at recently.
+
+- id: experian-marketing
+  name: Experian Marketing Services opt-out
+  category: data-broker
+  method: web
+  url: https://www.experian.com/privacy/opting-out
+  per: person
+  fields: [name, address]
+  renew_days: null
+  cost: Free
+  automation: assisted
+  notes: |
+    Separate from OptOutPrescreen (credit offers). This is Experian's
+    marketing-list opt-out. Verify the current URL on experian.com if it
+    redirects to a general privacy page.
+
+- id: lexisnexis
+  name: LexisNexis consumer opt-out
+  category: data-broker
+  method: web
+  url: https://consumer.risk.lexisnexis.com/request
+  per: person
+  fields: [name, address]
+  renew_days: null
+  cost: Free
+  automation: assisted
+  notes: |
+    Eligibility is restricted (identity-theft victims, law enforcement,
+    public officials, people facing harm). Everyone else can still request
+    a consumer disclosure report to see what they hold.
+
+- id: peopleconnect
+  name: PeopleConnect suppression (Intelius, TruthFinder, Instant Checkmate, US Search)
+  category: data-broker
+  method: web
+  url: https://suppression.peopleconnect.us/
+  per: person
+  fields: [name, email, date_of_birth]
+  renew_days: 180
+  cost: Free
+  automation: assisted
+  notes: |
+    Verify your email, pick your record, pass the masked-credential check,
+    then set "Desired Behavior" to Suppressed and SAVE. Stopping at the green
+    Verified banner leaves you listed. Records resurface; re-check twice a year.
+
+- id: whitepages
+  name: Whitepages suppression
+  category: data-broker
+  method: web
+  url: https://www.whitepages.com/suppression-requests
+  per: person
+  fields: [name, address, phones]
+  renew_days: 180
+  cost: Free
+  automation: assisted
+  notes: Search yourself first, paste the profile URL, then confirm by phone code.
+
+- id: spokeo
+  name: Spokeo opt-out
+  category: data-broker
+  method: web
+  url: https://www.spokeo.com/optout
+  per: person
+  fields: [name, email]
+  renew_days: 180
+  cost: Free
+  automation: assisted
+  notes: Needs the URL of your Spokeo listing plus an email confirmation.
+
+- id: beenverified
+  name: BeenVerified / PeopleLooker / NeighborWho opt-out
+  category: data-broker
+  method: web
+  url: https://www.beenverified.com/app/optout/search
+  per: person
+  fields: [name, address, email]
+  renew_days: 180
+  cost: Free
+  automation: assisted
+  notes: One opt-out covers the Lifetime Value Co. family of sites.
+
+- id: radaris
+  name: Radaris removal
+  category: data-broker
+  method: web
+  url: https://radaris.com/control/privacy
+  per: person
+  fields: [name, address, phones]
+  renew_days: 180
+  cost: Free
+  automation: assisted
+  notes: Requires creating an account to "claim" and then hide the profile.
+
+- id: mylife
+  name: MyLife removal
+  category: data-broker
+  method: email
+  email_to: privacy@mylife.com
+  phone: "1-888-704-1900"
+  url: https://www.mylife.com/
+  per: person
+  fields: [name, address, date_of_birth]
+  renew_days: 180
+  cost: Free
+  automation: assisted
+  notes: Email the profile URL(s) you want removed; follow up by phone if ignored.
+
+- id: fastpeoplesearch
+  name: FastPeopleSearch removal
+  category: data-broker
+  method: web
+  url: https://www.fastpeoplesearch.com/removal
+  per: person
+  fields: [name, email]
+  renew_days: 180
+  cost: Free
+  automation: assisted
+  notes: Search, open your record, click "Remove my record". Email confirmation.
+
+- id: truepeoplesearch
+  name: TruePeopleSearch removal
+  category: data-broker
+  method: web
+  url: https://www.truepeoplesearch.com/removal
+  per: person
+  fields: [name, email]
+  renew_days: 180
+  cost: Free
+  automation: assisted
+  notes: Same operator family as FastPeopleSearch; do both.
+
+- id: peoplefinders
+  name: PeopleFinders opt-out
+  category: data-broker
+  method: web
+  url: https://www.peoplefinders.com/opt-out
+  per: person
+  fields: [name, address, email]
+  renew_days: 180
+  cost: Free
+  automation: assisted
+  notes: Find your listing, then submit the opt-out with email confirmation.
+
+- id: clustrmaps
+  name: ClustrMaps opt-out
+  category: data-broker
+  method: web
+  url: https://clustrmaps.com/bl/opt-out
+  per: person
+  fields: [name, address]
+  renew_days: 180
+  cost: Free
+  automation: assisted
+  notes: Paste your profile URL; CAPTCHA.
+
+- id: nuwber
+  name: Nuwber removal
+  category: data-broker
+  method: web
+  url: https://nuwber.com/removal/link
+  per: person
+  fields: [name, address, email]
+  renew_days: 180
+  cost: Free
+  automation: assisted
+  notes: Paste your profile URL; CAPTCHA plus email confirmation.
+
+- id: thatsthem
+  name: ThatsThem opt-out
+  category: data-broker
+  method: web
+  url: https://thatsthem.com/optout
+  per: person
+  fields: [name, address, email, phones]
+  renew_days: 180
+  cost: Free
+  automation: assisted
+  notes: Fill the form directly; no listing URL needed.
+
+- id: usphonebook
+  name: USPhoneBook opt-out
+  category: data-broker
+  method: web
+  url: https://www.usphonebook.com/opt-out
+  per: person
+  fields: [name, phones, email]
+  renew_days: 180
+  cost: Free
+  automation: assisted
+  notes: Search by phone, open record, "Remove my record", email confirmation.
