@@ -64,6 +64,13 @@ def _status_cell(state: State, unit: Unit) -> str:
 
 # ------------------------------------------------------------- commands
 
+def cmd_ui(args):
+    from .web import serve
+
+    serve(port=args.port, open_browser=not args.no_open)
+    return 0
+
+
 def cmd_init(args):
     try:
         p = write_template(force=args.force)
@@ -236,12 +243,17 @@ def cmd_email(args):
 # ----------------------------------------------------------------- main
 
 def build_parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(prog="optout", description="Work through every do-not-call / do-not-mail / data-broker opt-out, locally, no AI.")
+    ap = argparse.ArgumentParser(prog="optout", description="Work through every do-not-call / do-not-mail / data-broker opt-out, locally, no AI. Run with no arguments for the web UI.")
     ap.add_argument("--version", action="version", version=f"optout {__version__}")
     ap.add_argument("--identity", help=f"identity YAML (default {identity_path()})")
     ap.add_argument("--catalog", help="alternate registries.yaml")
     ap.add_argument("--person", "-p", action="append", help="limit to person id (repeatable)")
     sub = ap.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("ui", help="open the local web UI (default when no command is given)")
+    s.add_argument("--port", type=int, default=8765)
+    s.add_argument("--no-open", action="store_true", help="do not open the browser")
+    s.set_defaults(fn=cmd_ui)
 
     s = sub.add_parser("init", help="write an identity template")
     s.add_argument("--force", action="store_true")
@@ -299,6 +311,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv=None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if not argv:
+        argv = ["ui"]
     args = build_parser().parse_args(argv)
     try:
         return args.fn(args) or 0

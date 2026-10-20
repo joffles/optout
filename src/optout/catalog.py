@@ -107,6 +107,11 @@ def _digits(p: str) -> str:
 
 
 def default_catalog_path() -> Path:
+    import os
+
+    env = os.environ.get("OPTOUT_CATALOG")
+    if env:
+        return Path(env).expanduser()
     return Path(str(resources.files("optout").joinpath("data/registries.yaml")))
 
 

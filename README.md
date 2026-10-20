@@ -30,37 +30,53 @@ an **assisted** runner, not a fire-and-forget bot:
   due or about to expire.
 
 Expect the first full pass to take an hour or two of clicking. After that,
-`optout status` tells you what to redo and when.
+the dashboard tells you what to redo and when.
 
-## Install
+## Run it
 
-```bash
-cd ~/code/optout
-uv sync --all-extras
-uv run playwright install chromium   # only needed if you lack Google Chrome
-```
-
-Or `uv tool install --with playwright .` for a global `optout` command.
-
-## Use
+One command. It installs its own dependencies on first run and opens the UI
+in your browser at http://127.0.0.1:8765:
 
 ```bash
-optout init                 # writes ~/.config/optout/identity.yaml (mode 600)
-$EDITOR ~/.config/optout/identity.yaml
-optout identity             # redacted check of what was parsed
-optout list                 # every registry + your progress
-optout show optoutprescreen # details, gotchas, per-person status
-optout run                  # work through everything that is due
-optout run -c phone         # just the do-not-call lists
-optout run national-dnc dmachoice
-optout status               # what is due or expiring in 60 days
-optout mark whitepages done --date 2026-09-01   # record something you did by hand
-optout letters              # print-and-sign letters for mail-in registries
-optout email epsilon        # show the email body that will be sent
+cd ~/code/optout && uv run optout
 ```
 
-Inside `optout run`, after each page opens: `d` done, `s` skip, `f` re-run
-autofill (for multi-step forms), `x` failed, `p` leave pending.
+Or double-click `Optout.command` in Finder (it installs `uv` if needed).
+
+In the UI:
+
+1. **Setup**: enter each adult's name, state, addresses, emails and phones.
+   Saved to `~/.config/optout/identity.yaml` with mode 600.
+2. **Dashboard**: every registry that applies to you, how many submissions
+   each needs, and what is done, due or expiring. "Run everything due" or
+   run one category / one registry.
+3. **Run**: for each submission the tool opens the site in your Chrome,
+   fills in your details, and re-fills automatically as you move through
+   multi-step forms. You solve the CAPTCHA, click submit, and press **Done**
+   in the UI; it records the date and renewal and moves to the next one.
+   Email opt-outs open a prefilled draft in your mail client; mail-in forms
+   get a downloadable letter.
+
+### Command line
+
+Everything is also scriptable, which is handy for a cron job that emails you
+`optout status`:
+
+```bash
+uv run optout init                 # identity template instead of the UI form
+uv run optout list                 # registries + progress
+uv run optout show optoutprescreen # details, gotchas, per-person status
+uv run optout run                  # terminal-driven assisted run
+uv run optout run -c phone         # just the do-not-call lists
+uv run optout status               # due or expiring within 60 days
+uv run optout mark whitepages done --date 2026-09-01
+uv run optout letters              # print-and-sign letters
+uv run optout email epsilon        # show the email body
+```
+
+Inside the terminal `run`: `d` done, `s` skip, `f` fill again, `x` failed,
+`p` pending. `OPTOUT_HOME` moves the data directory; `OPTOUT_CATALOG` points
+at an alternate registries file.
 
 Email sending: by default it opens a `mailto:` draft. Set
 `OPTOUT_SMTP_HOST/PORT/USER/PASS/FROM` to send directly, or pass

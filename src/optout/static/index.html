@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>optout</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --fg:#1b1f24; --muted:#6a737d; --line:#e1e4e8; --accent:#2a6df4; --ok:#1a7f37; --warn:#b26a00; --bad:#c62828; --dim:#9aa0a6; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0f1115; --card:#171a21; --fg:#e6e8eb; --muted:#9aa3ad; --line:#2a2f3a; --accent:#6ea0ff; --ok:#4cc38a; --warn:#f2b84b; --bad:#ff7b72; --dim:#6b7280; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+  header { display:flex; align-items:center; gap:16px; padding:14px 24px; border-bottom:1px solid var(--line); background:var(--card); position:sticky; top:0; z-index:5; }
+  header h1 { font-size:18px; margin:0; }
+  header nav button { background:none; border:0; color:var(--muted); font:inherit; padding:6px 10px; cursor:pointer; border-radius:6px; }
+  header nav button.active { color:var(--fg); background:var(--bg); }
+  main { max-width:1100px; margin:0 auto; padding:20px 16px 60px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px; margin-bottom:16px; }
+  h2 { font-size:16px; margin:0 0 10px; }
+  .muted { color:var(--muted); }
+  button, .btn { font:inherit; padding:8px 14px; border-radius:7px; border:1px solid var(--line); background:var(--card); color:var(--fg); cursor:pointer; }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  button.good { background:var(--ok); color:#fff; border-color:var(--ok); }
+  button.bad { background:var(--bad); color:#fff; border-color:var(--bad); }
+  button:disabled { opacity:.5; cursor:default; }
+  input, select { font:inherit; padding:7px 9px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); width:100%; }
+  .row { display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); margin-bottom:10px; }
+  .list { display:flex; flex-direction:column; gap:8px; }
+  .inline { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+  .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid var(--line); }
+  .pill.todo { color:var(--warn); border-color:var(--warn); }
+  .pill.done { color:var(--ok); border-color:var(--ok); }
+  .pill.pending { color:var(--accent); border-color:var(--accent); }
+  .pill.skipped { color:var(--dim); }
+  .pill.failed, .pill.expired { color:var(--bad); border-color:var(--bad); }
+  .pill.na { color:var(--dim); }
+  .stat { font-size:28px; font-weight:700; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:12px; }
+  pre { background:var(--bg); padding:10px; border-radius:7px; white-space:pre-wrap; font-size:13px; max-height:220px; overflow:auto; }
+  .notes { white-space:pre-wrap; font-size:14px; }
+  details summary { cursor:pointer; color:var(--muted); }
+  .banner { padding:10px 14px; border-radius:8px; background:color-mix(in srgb, var(--accent) 12%, transparent); margin-bottom:12px; }
+  .person { border:1px dashed var(--line); border-radius:8px; padding:12px; margin-bottom:12px; }
+  .small { font-size:12px; }
+  a { color:var(--accent); }
+  .progress { height:8px; background:var(--bg); border-radius:4px; overflow:hidden; margin:8px 0 14px; }
+  .progress > div { height:100%; background:var(--accent); transition:width .3s; }
+  .fixed-run { position:fixed; right:18px; bottom:18px; z-index:6; }
+</style>
+</head>
+<body>
+<header>
+  <h1>optout</h1>
+  <nav>
+    <button data-tab="dashboard" class="active">Dashboard</button>
+    <button data-tab="run">Run</button>
+    <button data-tab="setup">Setup</button>
+  </nav>
+  <span class="muted small" id="paths"></span>
+</header>
+<main>
+  <section id="tab-dashboard">
+    <div id="needSetup" class="banner" hidden>Start by entering your details under <b>Setup</b>. Everything stays on this machine.</div>
+    <div class="card">
+      <div class="stats">
+        <div><div class="stat" id="sTotal">–</div><div class="muted">submissions</div></div>
+        <div><div class="stat" id="sDue" style="color:var(--warn)">–</div><div class="muted">to do</div></div>
+        <div><div class="stat" id="sDone" style="color:var(--ok)">–</div><div class="muted">done</div></div>
+        <div><div class="stat" id="sSoon">–</div><div class="muted">renew within 60 days</div></div>
+      </div>
+      <div class="inline" style="margin-top:14px">
+        <button class="primary" id="btnRunAll">Run everything due</button>
+        <select id="catFilter" style="width:auto">
+          <option value="">all categories</option>
+          <option value="phone">phone</option><option value="mail">mail</option><option value="email">email</option>
+          <option value="credit-offers">credit offers</option><option value="data-broker">data brokers</option>
+        </select>
+        <button id="btnRunCat">Run this category</button>
+        <label class="inline small"><input type="checkbox" id="redo" style="width:auto"> include already done</label>
+        <span class="muted small" id="pwNote"></span>
+      </div>
+    </div>
+    <div class="card">
+      <table id="regTable"><thead><tr><th>Registry</th><th>Category</th><th>Via</th><th>Renew</th><th>Cost</th><th>Submissions</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <section id="tab-run" hidden>
+    <div class="card" id="runIdle">
+      <h2>No run in progress</h2>
+      <p class="muted">Start one from the Dashboard. The tool opens each site in your Chrome, fills in your details, re-fills automatically as you move through multi-step forms, and waits here for you to confirm.</p>
+    </div>
+    <div class="card" id="runActive" hidden>
+      <div class="inline" style="justify-content:space-between">
+        <h2 id="runTitle"></h2>
+        <span class="muted" id="runCount"></span>
+      </div>
+      <div class="progress"><div id="runBar" style="width:0"></div></div>
+      <p id="runPerson" class="muted"></p>
+      <div class="notes" id="runNotes"></div>
+      <h3 class="small muted" style="margin:14px 0 4px">YOUR VALUES FOR THIS FORM</h3>
+      <table id="runValues"></table>
+      <p id="runFilled" class="small muted"></p>
+      <p id="runLink"></p>
+      <div class="inline" style="margin-top:12px">
+        <button class="good" data-act="done">Done – submitted</button>
+        <button data-act="fill">Fill again</button>
+        <button data-act="pending">Later</button>
+        <button data-act="skipped">Skip</button>
+        <button class="bad" data-act="failed">Failed</button>
+        <button data-act="stop" style="margin-left:auto">Stop run</button>
+      </div>
+    </div>
+    <div class="card" id="runDone" hidden>
+      <h2>Run finished</h2>
+      <p id="runSummary"></p>
+      <button onclick="showTab('dashboard')">Back to dashboard</button>
+    </div>
+    <details class="card"><summary>Log</summary><pre id="runLog"></pre></details>
+  </section>
+
+  <section id="tab-setup" hidden>
+    <div class="card">
+      <h2>People</h2>
+      <p class="muted">One block per adult in the household. Most registries are per person; addresses, emails and phones each get their own submission where needed. Your Social Security number is never asked for or stored.</p>
+      <div id="people"></div>
+      <div class="inline">
+        <button id="addPerson">+ Add person</button>
+        <button class="primary" id="savePeople">Save</button>
+        <span id="saveMsg" class="muted small"></span>
+      </div>
+    </div>
+  </section>
+</main>
+<button class="primary fixed-run" id="jumpRun" hidden>Run in progress →</button>
+
+<script>
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+const STATES = "AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY".split(" ");
+let overview = null, runPoll = null;
+
+async function api(path, body) {
+  const r = await fetch(path, body ? {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)} : {});
+  return r.json();
+}
+
+function showTab(name) {
+  $$("header nav button").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+  ["dashboard","run","setup"].forEach(t => $("#tab-"+t).hidden = t !== name);
+  if (name === "dashboard") loadOverview();
+}
+$$("header nav button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
+$("#jumpRun").onclick = () => showTab("run");
+
+// ---------------------------------------------------------------- dashboard
+function pill(u) {
+  if (!u.record) return `<span class="pill todo">to do</span>`;
+  const r = u.record;
+  if (r.status === "done") {
+    if (u.due) return `<span class="pill expired">expired ${r.expires}</span>`;
+    return `<span class="pill done">done ${r.at}${r.expires ? " · until "+r.expires : ""}</span>`;
+  }
+  return `<span class="pill ${r.status}">${r.status} ${r.at}</span>`;
+}
+function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+async function loadOverview() {
+  overview = await api("/api/overview");
+  $("#paths").textContent = overview.paths.identity;
+  $("#needSetup").hidden = overview.people.length > 0;
+  $("#pwNote").textContent = overview.playwright ? "" : "Playwright not installed: pages open in your default browser without autofill.";
+  const units = overview.registries.flatMap(r => r.units);
+  const soon = units.filter(u => u.record && u.record.status === "done" && u.record.expires && !u.due && (new Date(u.record.expires) - Date.now()) < 60*864e5).length;
+  $("#sTotal").textContent = units.length;
+  $("#sDue").textContent = units.filter(u => u.due).length;
+  $("#sDone").textContent = units.filter(u => u.record && u.record.status === "done" && !u.due).length;
+  $("#sSoon").textContent = soon;
+  const tb = $("#regTable tbody"); tb.innerHTML = "";
+  for (const r of overview.registries) {
+    const tr = document.createElement("tr");
+    const subs = r.units.length ? r.units.map(u => `<div>${esc(u.describe)} ${pill(u)}</div>`).join("")
+               : (overview.people.length ? `<span class="pill na">n/a – ${r.states.join("/")} residents only</span>` : (r.states ? `<span class="pill na">${r.states.join("/")} only</span>` : ""));
+    tr.innerHTML = `<td><b>${esc(r.name)}</b><br><a href="${esc(r.url)}" target="_blank" class="small">${esc(r.url.replace(/^https?:\/\/(www\.)?/, ""))}</a>
+        <details><summary class="small">notes</summary><div class="notes small">${esc(r.notes)}${r.mail_address ? "\n\nMail: "+esc(r.mail_address) : ""}${r.phone ? "\nPhone: "+esc(r.phone) : ""}</div></details></td>
+      <td>${esc(r.category)}</td><td>${esc(r.method)}</td><td>${r.renew_days ? r.renew_days+"d" : "never"}</td><td>${esc(r.cost)}</td>
+      <td>${subs}</td>
+      <td>${r.units.length ? `<button class="small" data-run="${r.id}">Run</button> <button class="small" data-mark="${r.id}">Mark done</button>` : ""}</td>`;
+    tb.appendChild(tr);
+  }
+  $$("[data-run]").forEach(b => b.onclick = () => startRun({ids:[b.dataset.run], redo:true}));
+  $$("[data-mark]").forEach(b => b.onclick = async () => { await api("/api/mark", {registry:b.dataset.mark, status:"done"}); loadOverview(); });
+}
+async function startRun(opts) {
+  const res = await api("/api/run/start", {redo: $("#redo").checked, ...opts});
+  if (res.error) { alert(res.error); return; }
+  showTab("run"); pollRun();
+}
+$("#btnRunAll").onclick = () => startRun({});
+$("#btnRunCat").onclick = () => { const c = $("#catFilter").value; startRun(c ? {categories:[c]} : {}); };
+
+// ---------------------------------------------------------------- run
+async function pollRun() {
+  const s = await api("/api/run");
+  const active = s.phase === "opening" || s.phase === "waiting";
+  $("#runIdle").hidden = s.phase !== "idle";
+  $("#runActive").hidden = !active;
+  $("#runDone").hidden = !(s.phase === "finished" || s.phase === "error");
+  $("#jumpRun").hidden = !active || !$("#tab-run").hidden;
+  $("#runLog").textContent = s.log.join("\n");
+  if (active && s.current) {
+    const u = s.current;
+    $("#runTitle").textContent = u.registry_name;
+    $("#runCount").textContent = `${s.index+1} of ${s.total}`;
+    $("#runBar").style.width = `${100*s.index/s.total}%`;
+    $("#runPerson").textContent = `${u.person_name} · ${u.describe}`;
+    $("#runNotes").textContent = u.notes;
+    $("#runValues").innerHTML = Object.entries(u.values).filter(([,v]) => v).map(([k,v]) => `<tr><th>${esc(k.replace("_"," "))}</th><td>${esc(v)}</td></tr>`).join("");
+    $("#runFilled").textContent = s.phase === "opening" ? "Opening in Chrome…" : (s.filled.length ? "Autofilled: " + [...new Set(s.filled)].join(", ") + ". Finish the CAPTCHA and submit in Chrome, then press Done." : "Finish in Chrome, then press Done. Fields are filled automatically as the form appears.");
+    let link = "";
+    if (u.method === "web") link = `<a href="${esc(u.url)}" target="_blank">open ${esc(u.url)}</a> (if the Chrome window did not appear)`;
+    if (u.method === "email") link = `Email draft opened to <b>${esc(u.email_to)}</b>. Send it, then press Done.`;
+    if (u.method === "phone") link = `Call <b>${esc(u.phone_number)}</b> from ${esc(u.describe)}.`;
+    const letter = `<a href="/api/letter?registry=${u.registry}&key=${encodeURIComponent(u.key)}">Download letter</a>`;
+    if (u.method === "mail") link = `${letter} – print, sign, mail. Press Done once it is in the post.`;
+    else if (u.has_letter) link += ` &nbsp;·&nbsp; prefer paper? ${letter} (mail-in form is permanent where noted).`;
+    $("#runLink").innerHTML = link;
+    $$("#runActive [data-act]").forEach(b => b.disabled = s.phase === "opening" && b.dataset.act !== "stop");
+  }
+  if (s.phase === "finished" || s.phase === "error") {
+    const c = {}; s.results.forEach(([,st]) => c[st] = (c[st]||0)+1);
+    $("#runSummary").textContent = Object.entries(c).map(([k,v]) => `${v} ${k}`).join(", ") || (s.phase === "error" ? "Something went wrong; see the log." : "Nothing processed.");
+  }
+  clearTimeout(runPoll);
+  if (active || s.phase === "opening") runPoll = setTimeout(pollRun, 1200);
+}
+$$("#runActive [data-act]").forEach(b => b.onclick = async () => { await api("/api/run/action", {action: b.dataset.act}); setTimeout(pollRun, 300); });
+
+// ---------------------------------------------------------------- setup
+function personHTML(p, i) {
+  const addr = (p.addresses && p.addresses.length ? p.addresses : [{current:true}]).map((a, j) => `
+    <div class="row addr" data-j="${j}">
+      <input placeholder="Street address" data-f="line1" value="${esc(a.line1)}" style="grid-column:span 2">
+      <input placeholder="Apt / unit" data-f="line2" value="${esc(a.line2)}">
+      <input placeholder="City" data-f="city" value="${esc(a.city)}">
+      <select data-f="state"><option value="">State</option>${STATES.map(s => `<option ${s===(a.state||"") ? "selected":""}>${s}</option>`).join("")}</select>
+      <input placeholder="ZIP" data-f="zip" value="${esc(a.zip)}">
+      <label class="inline small"><input type="checkbox" data-f="current" ${a.current !== false ? "checked":""} style="width:auto"> current</label>
+    </div>`).join("");
+  return `<div class="person" data-i="${i}">
+    <div class="row">
+      <input placeholder="First name" data-f="first_name" value="${esc(p.first_name)}">
+      <input placeholder="Middle" data-f="middle_name" value="${esc(p.middle_name)}">
+      <input placeholder="Last name" data-f="last_name" value="${esc(p.last_name)}">
+      <input placeholder="Date of birth (YYYY-MM-DD, optional)" data-f="date_of_birth" value="${esc(p.date_of_birth)}">
+      <select data-f="state"><option value="">State of residence</option>${STATES.map(s => `<option ${s===(p.state||"") ? "selected":""}>${s}</option>`).join("")}</select>
+    </div>
+    <div class="small muted">Addresses (include previous ones for data-broker cleanup; untick “current”)</div>
+    <div class="addrs">${addr}</div>
+    <button class="small addAddr">+ address</button>
+    <div class="row" style="margin-top:10px">
+      <input placeholder="Emails, comma separated" data-f="emails" value="${esc((p.emails||[]).join(", "))}" style="grid-column:span 2">
+      <input placeholder="Phones, comma separated" data-f="phones" value="${esc((p.phones||[]).join(", "))}" style="grid-column:span 2">
+    </div>
+    <button class="small removePerson">remove person</button>
+  </div>`;
+}
+function renderPeople(people) {
+  $("#people").innerHTML = people.map(personHTML).join("");
+  $$(".addAddr").forEach(b => b.onclick = () => {
+    const box = b.previousElementSibling; const j = box.children.length;
+    box.insertAdjacentHTML("beforeend", personHTML({addresses:[{current:false}]}, 0).match(/<div class="row addr"[\s\S]*?<\/div>\s*<\/div>/)[0].replace('data-j="0"', `data-j="${j}"`));
+  });
+  $$(".removePerson").forEach(b => b.onclick = () => b.closest(".person").remove());
+}
+function readPeople() {
+  return $$(".person").map(el => {
+    const f = n => $(`[data-f="${n}"]`, el).value.trim();
+    return {
+      first_name: f("first_name"), middle_name: f("middle_name"), last_name: f("last_name"),
+      date_of_birth: f("date_of_birth"), state: f("state"),
+      addresses: $$(".addr", el).map(a => ({
+        line1: $('[data-f="line1"]', a).value.trim(), line2: $('[data-f="line2"]', a).value.trim(),
+        city: $('[data-f="city"]', a).value.trim(), state: $('[data-f="state"]', a).value, zip: $('[data-f="zip"]', a).value.trim(),
+        current: $('[data-f="current"]', a).checked, label: $('[data-f="current"]', a).checked ? "home" : "previous",
+      })).filter(a => a.line1),
+      emails: f("emails").split(/[,\s]+/).filter(Boolean),
+      phones: f("phones").split(/,\s*/).map(s => s.trim()).filter(Boolean),
+    };
+  });
+}
+$("#addPerson").onclick = () => $("#people").insertAdjacentHTML("beforeend", personHTML({}, $$(".person").length)) || renderPeople(readPeople());
+$("#savePeople").onclick = async () => {
+  const people = readPeople().filter(p => p.first_name || p.last_name);
+  if (!people.length) { $("#saveMsg").textContent = "Enter at least one name."; return; }
+  await api("/api/identity", {people});
+  $("#saveMsg").textContent = "Saved to " + overview.paths.identity;
+  await loadOverview();
+  showTab("dashboard");
+};
+
+// ---------------------------------------------------------------- boot
+(async () => {
+  await loadOverview();
+  renderPeople(overview.people.length ? overview.people : [{}]);
+  if (!overview.people.length) showTab("setup");
+  pollRun();
+})();
+</script>
+</body>
+</html>

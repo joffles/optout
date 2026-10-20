@@ -2,9 +2,10 @@
 
 Drives the user's own installed Chrome through Playwright with a persistent
 profile, so sites see a normal returning user: real user agent, real
-cookies, no `navigator.webdriver`, human-paced typing. The tool fills the
-form fields it can recognise and then hands the page to you to solve any
-CAPTCHA, review the values and click submit yourself.
+cookies, no `navigator.webdriver`, human-paced typing. The session fills
+every form field it can recognise, and re-fills automatically whenever the
+page changes (multi-step forms). CAPTCHAs and the final submit stay with
+the user.
 """
 from __future__ import annotations
 
@@ -33,7 +34,10 @@ FIELD_PATTERNS: list[tuple[str, str]] = [
     ("date_of_birth", r"birth|\bdob\b"),
     ("full_name", r"full.?name|your.?name|\bname\b"),
 ]
-NEVER_FILL = re.compile(r"password|passwd|ssn|social|security.?number|card|cvv|cvc|captcha|search|coupon|promo|user.?name|login|company|file", re.I)
+NEVER_FILL = re.compile(
+    r"password|passwd|ssn|social|security.?number|card|cvv|cvc|captcha|search|coupon|promo|user.?name|login|company|file",
+    re.I,
+)
 
 COLLECT_JS = """
 () => {
@@ -95,7 +99,7 @@ def _human_type(locator, text: str) -> None:
 
 
 def autofill(page, values: dict[str, str], used: set[str] | None = None) -> list[tuple[str, str]]:
-    """Fill recognised fields on `page`. Returns [(field, meta)] filled."""
+    """Fill recognised, still-empty fields on `page`. Returns [(field, meta)]."""
     used = used if used is not None else set()
     filled: list[tuple[str, str]] = []
     fields = page.evaluate(COLLECT_JS)
@@ -104,8 +108,6 @@ def autofill(page, values: dict[str, str], used: set[str] | None = None) -> list
         if not fld or fld in used:
             continue
         val = values.get(fld, "")
-        if fld == "full_name" and not val:
-            val = values.get("full_name", "")
         if not val or f["value"].strip():
             continue
         loc = page.locator(f'[data-optout-idx="{f["idx"]}"]').first
@@ -133,25 +135,25 @@ def playwright_available() -> bool:
         return False
 
 
-def open_plain(url: str) -> None:
-    webbrowser.open(url)
+class BrowserSession:
+    """One Chrome window for a whole run; a fresh tab per registry.
 
-
-def run_assisted(unit: Unit, *, fill: bool = True, submit: bool = False, console=print) -> str:
-    """Open the registry page in the user's Chrome, autofill, wait for the user.
-
-    Returns the final status the user chose: done | skipped | failed | pending.
+    Must be created, used and closed from the same thread (Playwright sync API).
     """
-    reg = unit.registry
-    if not playwright_available():
-        console("Playwright not installed (pip install 'optout[browser]' && playwright install chromium). Opening in default browser instead.")
-        open_plain(reg.url)
-        return _ask_outcome(console)
 
-    from playwright.sync_api import sync_playwright
+    def __init__(self, log=print):
+        self.log = log
+        self._pw = None
+        self.ctx = None
+        self.page = None
+        self._last_url = ""
+        self._last_sig = ""
+        self.values: dict[str, str] = {}
 
-    values = unit.values()
-    with sync_playwright() as pw:
+    def open(self) -> None:
+        from playwright.sync_api import sync_playwright
+
+        self._pw = sync_playwright().start()
         launch = dict(
             user_data_dir=str(browser_profile_dir()),
             headless=False,
@@ -161,61 +163,125 @@ def run_assisted(unit: Unit, *, fill: bool = True, submit: bool = False, console
             locale="en-US",
         )
         try:
-            ctx = pw.chromium.launch_persistent_context(channel="chrome", **launch)
-        except Exception:
-            console("Installed Chrome not found; falling back to Playwright's Chromium.")
-            ctx = pw.chromium.launch_persistent_context(**launch)
-        ctx.add_init_script(STEALTH_JS)
-        page = ctx.pages[0] if ctx.pages else ctx.new_page()
-        page.goto(reg.url, wait_until="domcontentloaded")
+            self.ctx = self._pw.chromium.launch_persistent_context(channel="chrome", **launch)
+        except Exception:  # noqa: BLE001
+            self.log("Installed Chrome not found; using Playwright's Chromium.")
+            self.ctx = self._pw.chromium.launch_persistent_context(**launch)
+        self.ctx.add_init_script(STEALTH_JS)
+
+    def start(self, unit: Unit) -> list[tuple[str, str]]:
+        """Open the registry page in a new tab and autofill."""
+        self.values = unit.values()
+        for p in list(self.ctx.pages):
+            try:
+                p.close()
+            except Exception:  # noqa: BLE001
+                pass
+        self.page = self.ctx.new_page()
+        self.page.goto(unit.registry.url, wait_until="domcontentloaded")
         time.sleep(random.uniform(1.0, 2.0))
+        self._last_url = self.page.url
+        if unit.registry.automation != "assisted":
+            return []
+        return self.fill()
 
-        if fill and reg.automation == "assisted":
-            filled = autofill(page, values)
-            if filled:
-                console("Autofilled: " + ", ".join(f for f, _ in filled))
-            else:
-                console("No recognisable fields on this page yet (multi-step form?). Type 'f' to retry autofill after navigating.")
-        elif reg.automation == "prohibited":
+    def fill(self) -> list[tuple[str, str]]:
+        try:
+            filled = autofill(self.page, self.values)
+        except Exception as exc:  # noqa: BLE001
+            self.log(f"autofill error: {exc.__class__.__name__}")
+            return []
+        self._last_sig = self._signature()
+        return filled
+
+    def _signature(self) -> str:
+        try:
+            return self.page.evaluate("() => document.querySelectorAll('input,select,textarea').length + '|' + location.href")
+        except Exception:  # noqa: BLE001
+            return ""
+
+    def poll(self) -> list[tuple[str, str]]:
+        """Call periodically; re-fills when the page navigated or the form changed."""
+        if self.page is None:
+            return []
+        try:
+            if self.page.is_closed():
+                return []
+            sig = self._signature()
+        except Exception:  # noqa: BLE001
+            return []
+        if sig and sig != self._last_sig:
+            time.sleep(0.8)
+            return self.fill()
+        return []
+
+    def page_closed(self) -> bool:
+        try:
+            return self.page is None or self.page.is_closed()
+        except Exception:  # noqa: BLE001
+            return True
+
+    def close(self) -> None:
+        for obj, meth in ((self.ctx, "close"), (self._pw, "stop")):
+            try:
+                if obj is not None:
+                    getattr(obj, meth)()
+            except Exception:  # noqa: BLE001
+                pass
+        self.ctx = self._pw = self.page = None
+
+
+def open_plain(url: str) -> None:
+    webbrowser.open(url)
+
+
+def run_assisted(unit: Unit, *, fill: bool = True, submit: bool = False, console=print, session: BrowserSession | None = None) -> str:
+    """CLI flow: open the page, autofill, wait for the user at the terminal."""
+    reg = unit.registry
+    if not playwright_available():
+        console("Playwright not installed (uv sync --all-extras). Opening in default browser instead.")
+        open_plain(reg.url)
+        return _ask_outcome(console)
+
+    own = session is None
+    if own:
+        session = BrowserSession(log=console)
+        session.open()
+    try:
+        filled = session.start(unit) if fill else []
+        if reg.automation == "prohibited":
             console("This site requires identity verification / forbids automation; fill it in yourself.")
-
+        elif filled:
+            console("Autofilled: " + ", ".join(f for f, _ in filled))
+        else:
+            console("No recognisable fields yet; the form will be filled automatically as you navigate.")
         console("")
         console("Values for this submission:")
         for k in reg.fields:
-            _print_field(k, values, console)
+            _print_field(k, session.values, console)
         console("")
-        console("Finish in the browser (CAPTCHA, review, submit). Then here: [d]one  [s]kip  [f]ill again  [x] failed  [p]ending")
-        used: set[str] = set()
+        console("Finish in the browser (CAPTCHA, review, submit). Then: [d]one  [s]kip  [f]ill again  [x] failed  [p]ending")
         while True:
             try:
                 ans = input("> ").strip().lower()
             except EOFError:
                 ans = "p"
             if ans in ("d", "done"):
-                status = "done"
-                break
+                return "done"
             if ans in ("s", "skip"):
-                status = "skipped"
-                break
+                return "skipped"
             if ans in ("x", "fail", "failed"):
-                status = "failed"
-                break
+                return "failed"
             if ans in ("p", "pending", "q", ""):
-                status = "pending"
-                break
+                return "pending"
             if ans in ("f", "fill"):
-                try:
-                    filled = autofill(page, values, used=set())
-                    console("Autofilled: " + (", ".join(f for f, _ in filled) or "nothing"))
-                except Exception as exc:  # noqa: BLE001
-                    console(f"Autofill error: {exc}")
+                filled = session.fill()
+                console("Autofilled: " + (", ".join(f for f, _ in filled) or "nothing"))
                 continue
             console("d / s / f / x / p")
-        try:
-            ctx.close()
-        except Exception:  # noqa: BLE001
-            pass
-    return status
+    finally:
+        if own:
+            session.close()
 
 
 def _print_field(k: str, values: dict[str, str], console) -> None:

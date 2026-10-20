@@ -7,3 +7,4 @@ dist/
 identity.yaml
 state.json
 letters/
+.claude/
